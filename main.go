@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"flag"
 
 	"github.com/Sirupsen/logrus"
@@ -15,8 +14,6 @@ import (
 	"fmt"
 	"time"
 
-	"strings"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ecr"
@@ -26,7 +23,6 @@ import (
 )
 
 const (
-	dockerCfgTemplate  = `{"%s":{"username":"oauth2accesstoken","password":"%s","email":"none"}}`
 	dockerJSONTemplate = `{"auths":{"%s":{"auth":"%s","email":"none"}}}`
 )
 
@@ -88,25 +84,6 @@ func NewKubeClient(kubeCfgFile string) (*kubernetes.Clientset, error) {
 	}
 
 	return client, nil
-}
-
-func extractDockerCfg(token string, proxyEndpoint string) string {
-	decodedToken, err := base64.StdEncoding.DecodeString(token)
-	if err != nil {
-		logrus.Errorf("Invalid token: %v:", err)
-	}
-
-	parts := strings.SplitN(string(decodedToken), ":", 2)
-	if len(parts) < 2 {
-		logrus.Errorf("Invalid token: expected two parts, got %n", len(parts))
-	}
-
-	return fmt.Sprintf(dockerCfgTemplate, proxyEndpoint, parts[1])
-	/*	data := map {
-		Username:      parts[0],
-		Password:      parts[1],
-		ProxyEndpoint: proxyEndpoint,
-	}*/
 }
 
 func getECRSecret(region string, secretName string) *v1.Secret {
