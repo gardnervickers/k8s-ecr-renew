@@ -150,7 +150,7 @@ func main() {
 	if err != nil {
 		logrus.Error("Could not create client,", err)
 	}
-	WatchNamespaces(client, time.Duration(60)*time.Minute, func(ns *v1.Namespace) error {
+	WatchNamespaces(client, time.Duration(1)*time.Minute, func(ns *v1.Namespace) error {
 		if ns.GetDeletionTimestamp() == nil {
 
 			// 2 Update existing service account
@@ -171,6 +171,33 @@ func main() {
 					return err
 				}
 			}
+
+			// Ensure that the default service account exists
+			defaultServiceAcccont, defaultServiceErr :=
+				client.ServiceAccounts(ns.GetName()).Get("default", metav1.GetOptions{})
+			if err != defaultServiceErr {
+				logrus.Errorf("Could not get ServiceAccounts! %v", err)
+			}
+			imagePullSecretFound := false
+			for i, imagePullSecret := range defaultServiceAcccont.ImagePullSecrets {
+				if imagePullSecret.Name == newSecret.Name {
+					defaultServiceAcccont.ImagePullSecrets[i] = v1.LocalObjectReference{Name: newSecret.Name}
+					imagePullSecretFound = true
+					break
+				}
+			}
+
+			if !imagePullSecretFound {
+				defaultServiceAcccont.ImagePullSecrets =
+					append(defaultServiceAcccont.ImagePullSecrets, v1.LocalObjectReference{Name: newSecret.Name})
+			}
+			// Update service accounts if they don't contain the secret
+
+			_, err = client.ServiceAccounts(ns.GetName()).Update(defaultServiceAcccont)
+			if err != nil {
+				return fmt.Errorf("Could update ServiceAccount! %v", err)
+			}
+			return nil
 		}
 		return nil
 	})
