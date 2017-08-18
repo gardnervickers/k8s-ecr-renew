@@ -27,9 +27,6 @@ const (
 
 type config struct {
 	Kubecfg            string
-	KubeMasterURL      string
-	AWSAccessKeyID     string
-	AWSSecretAccessKey string
 	AWSRegion          string
 	RefreshInterval    int
 }
@@ -39,14 +36,10 @@ func parse() config {
 	// Order of auth
 	// Check for kubecfg, then kube-master-url, then finally service account token.
 	var kubecfg = flag.String("kubecfg", "", "")
-	var kubeMasterURL = flag.String("kube-master-url", "", "")
-	var awsAccessKeyID = flag.String("aws_access_key_id", "", "")
-	var awsSecretAccessKey = flag.String("aws_secret_access_key", "", "")
 	var awsRegion = flag.String("aws_region", "", "")
 	var refreshInterval = flag.Int("refresh-interval", 60, "")
 	flag.Parse()
-	return config{*kubecfg, *kubeMasterURL, *awsAccessKeyID,
-		*awsSecretAccessKey, *awsRegion, *refreshInterval}
+	return config{*kubecfg, *awsRegion, *refreshInterval}
 }
 
 func NewKubeClient(kubeCfgFile string) (*kubernetes.Clientset, error) {
@@ -144,12 +137,12 @@ func WatchNamespaces(client *kubernetes.Clientset, resyncPeriod time.Duration,
 func main() {
 	secretName := "ecrsecret"
 	cfg := parse()
-	logrus.Infof("kubecfg file: %s AWS_ACCESS_KEY_ID: %s", cfg.Kubecfg, cfg.AWSAccessKeyID)
+	logrus.Infof("kubecfg file: %s", cfg.Kubecfg)
 	client, err := NewKubeClient(cfg.Kubecfg)
 	if err != nil {
 		logrus.Error("Could not create client,", err)
 	}
-	WatchNamespaces(client, time.Duration(1)*time.Minute, func(ns *v1.Namespace) error {
+	WatchNamespaces(client, time.Duration(cfg.RefreshInterval)*time.Minute, func(ns *v1.Namespace) error {
 		if ns.GetDeletionTimestamp() == nil {
 
 			// 2 Update existing service account
