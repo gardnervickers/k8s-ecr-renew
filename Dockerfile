@@ -1,4 +1,4 @@
 FROM alpine
 
-ADD main main
-ENTRYPOINT ["bin/bash", "main"]
+ADD main /usr/bin/ecr-renew
+
