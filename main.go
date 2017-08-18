@@ -6,8 +6,6 @@ import (
 	"github.com/Sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go/aws/session"
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -17,9 +15,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ecr"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/fields"
 )
 
 const (
@@ -108,7 +107,7 @@ func getECRSecret(region string, secretName string) *v1.Secret {
 	token := *result.AuthorizationData[0].AuthorizationToken
 	endpoint := *result.AuthorizationData[0].ProxyEndpoint
 	secret := &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
+		ObjectMeta: v1.ObjectMeta{
 			Name: secretName,
 		},
 	}
@@ -156,7 +155,7 @@ func main() {
 			// 2 Update existing service account
 			newSecret := getECRSecret(cfg.AWSRegion, secretName)
 			// Update secret if it already exists
-			_, err := client.Secrets(ns.GetName()).Get(secretName, metav1.GetOptions{})
+			_, err := client.Secrets(ns.GetName()).Get(secretName)
 			if err == nil {
 				logrus.Infof("Found existing secret in ns: %s, updating...", ns.GetName())
 				_, updateErr := client.Secrets(ns.GetName()).Update(newSecret)
@@ -174,7 +173,7 @@ func main() {
 
 			// Ensure that the default service account exists
 			defaultServiceAcccont, defaultServiceErr :=
-				client.ServiceAccounts(ns.GetName()).Get("default", metav1.GetOptions{})
+				client.ServiceAccounts(ns.GetName()).Get("default")
 			if err != defaultServiceErr {
 				logrus.Errorf("Could not get ServiceAccounts! %v", err)
 			}
